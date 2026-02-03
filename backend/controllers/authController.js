@@ -57,7 +57,15 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await User.find.findOne({ email }).select("+password");
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide email and password",
+        statusCode: 400,
+      });
+    }
+    const user = await User.findOne({ email }).select("+password");
     if (!user || !(await user.matchPassword(password))) {
       return res.status(401).json({
         success: false,
@@ -65,6 +73,40 @@ const login = async (req, res, next) => {
         statusCode: 401,
       });
     }
+
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid email or password",
+        statusCode: 401,
+      });
+    }
+
+    const token = generateToken(user._id);
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+      },
+      token: token,
+      message: "User logged in successfully",
+      statusCode: 200,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//@desc Logout User
+//@route POST /api/auth/logout
+//@access Private
+const logout = async (req, res, next) => {
+  try {
     res.status(200).json({
       success: true,
       data: {

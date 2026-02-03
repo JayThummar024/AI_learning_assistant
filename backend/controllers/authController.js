@@ -1,21 +1,24 @@
 import jwt from "jsonwebtoken";
-import User from "../models/userModel.js";
+import User from "../models/User.js";
 
 //Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    expiresIn: process.env.JWT_EXPIRES || "7d",
   });
 };
 
+//@desc Register a new User
+//@route POST /api/auth/register
+//@access Public
 const register = async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
-    const userExists = await User.findOne({ email });
+    const userExists = await User.findOne({ $or: [{ email }] });
     if (userExists) {
       return res.status(400).json({
         success: false,
-        error: "User already exists",
+        error: userExists.email === email ? "Email already in use" : "Username already in use",
         statusCode: 400,
       });
     }
@@ -25,15 +28,23 @@ const register = async (req, res, next) => {
       email,
       password,
     });
+
+    const token = generateToken(user._id);
+
     res.status(201).json({
       success: true,
       data: {
-        _id: user._id,
-        username: user.username,
-        email: user.email,
-        token: generateToken(user._id),
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          profileImage: user.profileImage,
+          createdAt: user.createdAt,
+        },
+        token,
       },
       statusCode: 201,
+      message: "User registered successfully",
     });
   } catch (error) {
     next(error);
@@ -43,7 +54,7 @@ const register = async (req, res, next) => {
 //@desc Login User
 //@route POST /api/auth/login
 //@access Public
-export const login = async (req, res, next) => {
+const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const user = await User.find.findOne({ email }).select("+password");
@@ -72,7 +83,7 @@ export const login = async (req, res, next) => {
 //@desc getUser Profile
 //@route GET /api/auth/profile
 //@access Private
-export const getProfile = async (req, res, next) => {
+const getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
     res.status(200).json({
@@ -88,7 +99,7 @@ export const getProfile = async (req, res, next) => {
 //@desc Update User Profile
 //@route PUT /api/auth/profile
 //@access Private
-export const updateProfile = async (req, res, next) => {
+const updateProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -116,7 +127,7 @@ export const updateProfile = async (req, res, next) => {
 //@desc Change User Password
 //@route PUT /api/auth/change-password
 //@access Private
-export const changePassword = async (req, res, next) => {
+const changePassword = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select("+password");
     if (!user) {

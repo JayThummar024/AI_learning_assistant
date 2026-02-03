@@ -35,7 +35,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 //Routes
 
-app.use("/api/v1", authRoutes); 
+app.use("/api/v1", authRoutes);
 
 app.use(errorHandler);
 
@@ -50,7 +50,7 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT} made on porn ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });
 
 process.on("unhandledRejection", (err) => {

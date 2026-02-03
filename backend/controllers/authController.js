@@ -127,10 +127,18 @@ const logout = async (req, res, next) => {
 //@access Private
 const getProfile = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select("-password");
+    const user = await User.findById(req.user.id);
+
     res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
       statusCode: 200,
     });
   } catch (error) {
@@ -139,11 +147,12 @@ const getProfile = async (req, res, next) => {
 };
 
 //@desc Update User Profile
-//@route PUT /api/auth/profile
+//@route PUT /api/auth/update-profile
 //@access Private
 const updateProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -152,13 +161,24 @@ const updateProfile = async (req, res, next) => {
       });
     }
 
-    const { username, email } = req.body;
+    const { username, email, profileImage } = req.body;
+
     user.username = username || user.username;
     user.email = email || user.email;
+    user.profileImage = user.profileImage || profileImage;
+
     await user.save();
+
     res.status(200).json({
       success: true,
-      data: user,
+      data: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      },
       statusCode: 200,
     });
   } catch (error) {
@@ -171,24 +191,31 @@ const updateProfile = async (req, res, next) => {
 //@access Private
 const changePassword = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select("+password");
-    if (!user) {
-      return res.status(404).json({
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
         success: false,
-        error: "User not found",
-        statusCode: 404,
+        error: "Please provide current and new password",
+        statusCode: 400,
       });
     }
-    const { currentPassword, newPassword } = req.body;
-    if (!(await user.matchPassword(currentPassword))) {
+
+    const user = await User.findById(req.user.id).select("+password");
+
+    const isMatch = await user.matchPassword(currentPassword);
+
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
         error: "Current password is incorrect",
         statusCode: 401,
       });
     }
+
     user.password = newPassword;
     await user.save();
+
     res.status(200).json({
       success: true,
       message: "Password changed successfully",
